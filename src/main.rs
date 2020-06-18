@@ -2,6 +2,9 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 
+extern crate rand;
+use rand::{thread_rng, Rng};
+
 type Kysyttava = HashMap<String, String>;
 
 
@@ -19,11 +22,65 @@ fn main() {
 
     // Parsitaan tiedoston sisältö
     let a = parsi_riveista(&mut rivit).unwrap();
-    for b in a {
-        println!("{:?}", b.get("perusmuoto"));
+    for b in &a {
+        //println!("{:?}", b.get("perusmuoto"));
 
     }
+
+    kysele(&a);
     
+}
+
+fn kysele(sanalista: &Vec<Kysyttava>) {
+    let mut rng = thread_rng();
+    println!("Tervetuloa kyselyyn!");
+    loop{
+
+
+        match kysy_sana(sanalista.get(rng.gen_range(0, sanalista.len())).unwrap(), "te-muoto", "perusmuoto"){
+            VastauksenTulos::Poistu => break,
+            _ => (),
+
+        }
+        println!("");
+    }
+
+    println!("Kiitoksia käytöstä. Tervetuloa uudelleen!");
+
+}
+
+enum VastauksenTulos {
+    Oikein,
+    Vaarin,
+    Poistu,
+    Luovuta,
+}
+
+fn kysy_sana(kysyttava: &Kysyttava, haluttu_muoto: &str, vihjemuoto: &str) -> VastauksenTulos{
+    let oikea_vastaus = kysyttava.get(haluttu_muoto).unwrap();
+    let vihje = kysyttava.get(vihjemuoto).unwrap();
+    let mut syote = String::new();
+
+    println!("Anna {} sanasta: {}", haluttu_muoto, vihje);
+
+    // Luetaan syöte ja verrataan sitä
+    match io::stdin().read_line(&mut syote) {
+        Err(e) => println!("Virhe: {}", e),
+        Ok(_) => return match syote.trim() {
+            "exit" => VastauksenTulos::Poistu,
+            "luovuta" => VastauksenTulos::Luovuta,
+            vastaus if vastaus == oikea_vastaus => {
+                println!("Oikein!"); 
+                VastauksenTulos::Oikein
+            },
+            a => {
+                println!("Väärin, oikea vastaus: {}", oikea_vastaus);
+                VastauksenTulos::Vaarin
+            }
+
+        },
+    }
+    VastauksenTulos::Poistu
 }
 
 /// Muodostaa annetusta tiedostosta lukijan, joka antaa rivin kerrallaan
