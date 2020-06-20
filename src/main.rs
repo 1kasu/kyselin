@@ -1,16 +1,18 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::env;
 
 extern crate rand;
 use rand::{thread_rng, Rng};
+use rand::rngs::ThreadRng;
 
 type Kysyttava = HashMap<String, String>;
 
 
 fn main() {
-    println!("Hello, world!");
 
+    println!("Luetaan tiedostosta kyseltävät sanat...");
     // Avataan tiedosto, jos voidaan ja kerätään rivit talteen
     let mut rivit = match File::open("sanalista.lst"){
         Ok(t) => keraa_rivit_tiedostosta(t),
@@ -22,22 +24,39 @@ fn main() {
 
     // Parsitaan tiedoston sisältö
     let a = parsi_riveista(&mut rivit).unwrap();
-    for b in &a {
-        //println!("{:?}", b.get("perusmuoto"));
+    /*for b in &a {
+        println!("{:?}", b.get("perusmuoto"));
 
-    }
+    }*/
 
     kysele(&a);
     
 }
 
+/// Sisältää varsinaisen kyselysilmukan
 fn kysele(sanalista: &Vec<Kysyttava>) {
+    // Luetaan argumentit talteen ja tulkitaan siitä kysyttävät asiat.
+    let args: Vec<String> = env::args().collect();
+    let mut vihjemuoto = "perusmuoto";
+    let mut vastausmuoto = "te-muoto";
+    if args.len() >= 3 {
+        vihjemuoto = &args[1];
+        vastausmuoto = &args[2];
+    }
+
     let mut rng = thread_rng();
     println!("Tervetuloa kyselyyn!");
     loop{
-
-
-        match kysy_sana(sanalista.get(rng.gen_range(0, sanalista.len())).unwrap(), "te-muoto", "perusmuoto"){
+        // Etsitään kysyttävä
+        let kysyttava = match anna_satunnainen_kysyttava(&mut rng, &sanalista, &vihjemuoto, &vastausmuoto){
+            Some(a) => a,
+            None => {
+                println!("Sadalla yrityksellä ei löytynyt yhtään kysyttävää :(");
+                break;
+            }
+        };
+        // Kysytään kysyttävä
+        match kysy_sana(kysyttava, &vastausmuoto, &vihjemuoto){
             VastauksenTulos::Poistu => break,
             _ => (),
 
@@ -49,6 +68,23 @@ fn kysele(sanalista: &Vec<Kysyttava>) {
 
 }
 
+fn anna_satunnainen_kysyttava<'a>(rng: &mut ThreadRng, kysymyslista: &'a Vec<Kysyttava>, vihje: &str, vastaus: &str) -> Option<&'a Kysyttava>{
+    // Varmistetaan ettei ole ikuinen silmukka, jos oikeanlaista kysyttävää ei edes ole olemassa.
+    for _i in 0..100{
+        let kysyttava = &kysymyslista.get(rng.gen_range(0, kysymyslista.len())).unwrap();
+        let v1 = kysyttava.get(vihje)?;
+        let v2 = kysyttava.get(vastaus)?;
+        if v1.trim() == "" || v2.trim() == "-" || v1.trim() == "-" || v2.trim() == "" 
+        {
+            continue;
+        }
+        return Some(kysyttava);
+
+    }
+    None
+
+}
+
 enum VastauksenTulos {
     Oikein,
     Vaarin,
@@ -56,6 +92,8 @@ enum VastauksenTulos {
     Luovuta,
 }
 
+
+/// Kysyy annetusta sanasta halutulla vihjeellä haluttua muotoa.
 fn kysy_sana(kysyttava: &Kysyttava, haluttu_muoto: &str, vihjemuoto: &str) -> VastauksenTulos{
     let oikea_vastaus = kysyttava.get(haluttu_muoto).unwrap();
     let vihje = kysyttava.get(vihjemuoto).unwrap();
@@ -73,7 +111,7 @@ fn kysy_sana(kysyttava: &Kysyttava, haluttu_muoto: &str, vihjemuoto: &str) -> Va
                 println!("Oikein!"); 
                 VastauksenTulos::Oikein
             },
-            a => {
+            _ => {
                 println!("Väärin, oikea vastaus: {}", oikea_vastaus);
                 VastauksenTulos::Vaarin
             }
