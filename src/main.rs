@@ -56,8 +56,10 @@ fn kysele(sanalista: &Vec<Kysyttava>) {
             }
         };
         // Kysytään kysyttävä
-        match kysy_sana(kysyttava, &vastausmuoto, &vihjemuoto){
+        match kysy_sana(&kysyttava, &vastausmuoto, &vihjemuoto){
             VastauksenTulos::Poistu => break,
+            VastauksenTulos::Vaarin => println!("Väärin, oikea vastaus: {}", kysyttava.get(vastausmuoto).unwrap()),
+            VastauksenTulos::Oikein => println!("Oikein! Suomeksi olisi: {}", kysyttava.get("suomennos").unwrap()), 
             _ => (),
 
         }
@@ -107,15 +109,8 @@ fn kysy_sana(kysyttava: &Kysyttava, haluttu_muoto: &str, vihjemuoto: &str) -> Va
         Ok(_) => return match syote.trim() {
             "exit" => VastauksenTulos::Poistu,
             "luovuta" => VastauksenTulos::Luovuta,
-            vastaus if vastaus == oikea_vastaus => {
-                println!("Oikein!"); 
-                VastauksenTulos::Oikein
-            },
-            _ => {
-                println!("Väärin, oikea vastaus: {}", oikea_vastaus);
-                VastauksenTulos::Vaarin
-            }
-
+            vastaus if vastaus == oikea_vastaus => VastauksenTulos::Oikein,
+            _ => VastauksenTulos::Vaarin 
         },
     }
     VastauksenTulos::Poistu
